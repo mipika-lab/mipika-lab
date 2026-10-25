@@ -452,11 +452,35 @@ render();
 </script><script id="app-shell-script">
 (function(){
 const links=[...document.querySelectorAll('nav a[href^="#"]')];
+// Keep the bottom/desktop navigation in sync with the visible section,
+// not just the URL hash (which may remain #home after scrolling).
+const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+let scheduled=false;
 function active(){
-const hash=location.hash||'#home';
-links.forEach(a=>{const yes=a.getAttribute('href')===hash;a.classList.toggle('app-active',yes);if(yes)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+ const offset=window.innerWidth>=800?125:100;
+ let current=sections[0];
+ for(const section of sections){
+  if(section.getBoundingClientRect().top<=offset)current=section;
+ }
+ const currentHash='#'+current.id;
+ links.forEach(a=>{
+  const yes=a.getAttribute('href')===currentHash;
+  a.classList.toggle('app-active',yes);
+  if(yes)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current');
+ });
+ scheduled=false;
 }
-window.addEventListener('hashchange',active);active();
+function scheduleActive(){if(!scheduled){scheduled=true;requestAnimationFrame(active)}}
+window.addEventListener('scroll',scheduleActive,{passive:true});
+window.addEventListener('resize',scheduleActive,{passive:true});
+window.addEventListener('hashchange',()=>{scheduleActive();setTimeout(scheduleActive,400)});
+links.forEach(a=>a.addEventListener('click',()=>{
+ links.forEach(link=>{const yes=link===a;link.classList.toggle('app-active',yes);if(yes)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')});
+ setTimeout(scheduleActive,450);
+}));
+// All three top-level RACE DATA groups start collapsed.
+document.querySelectorAll('#data details.data-category').forEach(d=>d.open=false);
+active();
 document.getElementById('hide-install-hint')?.addEventListener('click',()=>document.getElementById('app-install-hint')?.remove());
 })();
 </script><script id="gallery-script">
