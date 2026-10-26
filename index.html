@@ -707,35 +707,62 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script><script id="recent-period-analysis-script">
 (function(){
-const root=document.getElementById('recent-period-analysis');if(!root)return;
-const records=[...document.querySelectorAll('#log article.entry')].map(el=>{
- const title=el.querySelector('strong')?.textContent||'';
- const match=title.match(/(2026-\d{2}-\d{2})/);if(!match)return null;
- const details=el.querySelector('.muted')?.textContent||'';
- const stMatch=details.match(/ST\s*([Ff]?\.?\d{1,2})/);
- const finish=el.dataset.finish||'';
- let st=null;
- if(stMatch&&!/^F/i.test(stMatch[1])){const v=Number(stMatch[1]);if(Number.isFinite(v))st=v;}
- const isF=finish==='F'||/ST\s*F/i.test(details);
- return {date:match[1],course:Number(el.dataset.course),finish,isF,st};
-}).filter(x=>x&&x.course>=1&&x.course<=6);
-if(!records.length){root.querySelector('#recent-date-range').textContent='登録データがありません';return;}
-const latest=records.reduce((a,b)=>a>b.date?a:b.date);
-function monthsBefore(iso,n){const [y,m,d]=iso.split('-').map(Number);const target=new Date(y,m-1-n,1);const max=new Date(target.getFullYear(),target.getMonth()+1,0).getDate();target.setDate(Math.min(d,max));return [target.getFullYear(),String(target.getMonth()+1).padStart(2,'0'),String(target.getDate()).padStart(2,'0')].join('-');}
-const percent=(n,d)=>d?(100*n/d).toFixed(1)+'%':'—';
-const stfmt=(list)=>{const a=list.filter(x=>x.st!==null&&!x.isF);return a.length?(a.reduce((v,x)=>v+x.st,0)/a.length).toFixed(3).replace(/^0/,''):'—';};
-function metrics(list){const n=list.length;return {n,w:list.filter(x=>x.finish==='1').length,p2:list.filter(x=>['1','2'].includes(x.finish)).length,p3:list.filter(x=>['1','2','3'].includes(x.finish)).length,f:list.filter(x=>x.isF).length,st:stfmt(list)};}
-function render(period){
- root.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.period===period)));
- const start=period==='all'?'2026-01-01':monthsBefore(latest,Number(period));
- const list=records.filter(x=>x.date>=start&&x.date<=latest);
- root.querySelector('#recent-date-range').textContent=`対象期間：${start.replaceAll('-','/')} ～ ${latest.replaceAll('-','/')} ／ ${list.length}走`;
- const m=metrics(list);
- const values=[['出走数',m.n+'走'],['平均ST',m.st],['1着率',percent(m.w,m.n)],['2連対率',percent(m.p2,m.n)],['3連対率',percent(m.p3,m.n)],['F件数',m.f+'件']];
- root.querySelector('#recent-metrics').innerHTML=values.map(([k,v])=>`<div class="recent-metric"><small>${k}</small><strong>${v}</strong></div>`).join('');
- root.querySelector('#recent-course-grid').innerHTML=[1,2,3,4,5,6].map(c=>{const a=metrics(list.filter(x=>x.course===c));return `<div class="recent-course"><h4>${c}コース</h4><dl><dt>出走数</dt><dd>${a.n}走</dd><dt>平均ST</dt><dd>${a.st}</dd><dt>1着率</dt><dd>${percent(a.w,a.n)}</dd><dt>2連対率</dt><dd>${percent(a.p2,a.n)}</dd><dt>3連対率</dt><dd>${percent(a.p3,a.n)}</dd><dt>F件数</dt><dd>${a.f}</dd></dl></div>`;}).join('');
+function init(){
+ const root=document.getElementById('recent-period-analysis');
+ if(!root)return;
+ const range=root.querySelector('#recent-date-range');
+ const totals=root.querySelector('#recent-metrics');
+ const courses=root.querySelector('#recent-course-grid');
+ try{
+ const records=Array.from(document.querySelectorAll('#log article.entry')).map(function(el){
+   const source=el.getAttribute('data-search')||el.querySelector('strong')?.textContent||'';
+   const date=(source.match(/2026-\d{2}-\d{2}/)||[])[0];
+   const course=Number(el.getAttribute('data-course'));
+   const finish=String(el.getAttribute('data-finish')||'').trim();
+   const detail=el.querySelector('.muted')?.textContent||'';
+   const raw=(detail.match(/ST\s*(F?\.?\d{1,2})/i)||[])[1];
+   const isF=finish.toUpperCase()==='F'||/ST\s*F/i.test(detail);
+   const st=(!isF&&raw!==undefined)?Number(raw):null;
+   return {date:date,course:course,finish:finish,isF:isF,st:Number.isFinite(st)?st:null};
+ }).filter(x=>x.date&&x.course>=1&&x.course<=6);
+ if(!records.length){range.textContent='レース履歴を読み取れませんでした';return;}
+ const latest=records.map(x=>x.date).sort().at(-1);
+ function subtractMonths(iso,n){
+   const parts=iso.split('-').map(Number),y=parts[0],m=parts[1],d=parts[2];
+   const t=new Date(y,m-1-n,1);
+   const last=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
+   t.setDate(Math.min(d,last));
+   return [t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');
+ }
+ const pct=(n,d)=>d?(100*n/d).toFixed(1)+'%':'—';
+ function stats(rows){
+   const n=rows.length, w=rows.filter(x=>x.finish==='1').length;
+   const p2=rows.filter(x=>x.finish==='1'||x.finish==='2').length;
+   const p3=rows.filter(x=>['1','2','3'].includes(x.finish)).length;
+   const valid=rows.filter(x=>!x.isF&&x.st!==null);
+   const st=valid.length?(valid.reduce((sum,x)=>sum+x.st,0)/valid.length).toFixed(3).replace(/^0/,''):'—';
+   return {n,w,p2,p3,st,f:rows.filter(x=>x.isF).length};
+ }
+ function render(period){
+   root.querySelectorAll('button[data-period]').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.period===period)));
+   const start=period==='all'?'2026-01-01':subtractMonths(latest,Number(period));
+   const rows=records.filter(x=>x.date>=start&&x.date<=latest);
+   const m=stats(rows);
+   range.textContent='対象期間：'+start.replaceAll('-','/')+' ～ '+latest.replaceAll('-','/')+' ／ '+rows.length+'走';
+   const vals=[['出走数',m.n+'走'],['平均ST',m.st],['1着率',pct(m.w,m.n)],['2連対率',pct(m.p2,m.n)],['3連対率',pct(m.p3,m.n)],['F件数',m.f+'件']];
+   totals.innerHTML=vals.map(x=>'<div class="recent-metric"><small>'+x[0]+'</small><strong>'+x[1]+'</strong></div>').join('');
+   courses.innerHTML=[1,2,3,4,5,6].map(c=>{
+      const a=stats(rows.filter(x=>x.course===c));
+      return '<div class="recent-course"><h4>'+c+'コース</h4><dl><dt>出走数</dt><dd>'+a.n+'走</dd><dt>平均ST</dt><dd>'+a.st+'</dd><dt>1着率</dt><dd>'+pct(a.w,a.n)+'</dd><dt>2連対率</dt><dd>'+pct(a.p2,a.n)+'</dd><dt>3連対率</dt><dd>'+pct(a.p3,a.n)+'</dd><dt>F件数</dt><dd>'+a.f+'</dd></dl></div>';
+   }).join('');
+ }
+ root.querySelectorAll('button[data-period]').forEach(btn=>btn.addEventListener('click',()=>render(btn.dataset.period)));
+ render('3');
+ }catch(error){
+   range.textContent='集計処理でエラーが発生しました。再読み込みしてください。';
+   console.error('Recent period analysis:',error);
+ }
 }
-root.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>render(b.dataset.period)));
-render('3');
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script></body></html>
