@@ -881,13 +881,33 @@ $('tl-fetch').addEventListener('click',async()=>{const date=$('tl-date').value,v
  const key=[date,venue,race].join(':');const btn=$('tl-fetch');autoBusy=true;btn.disabled=true;status.textContent='非公式APIからオッズを読み込み中…';
  const ymd=date.replace(/-/g,'');const url=`https://boatraceopenapi.github.io/api/v1/${date.slice(0,4)}/${ymd}.json`;
  const backup=`https://lamrongol.github.io/BoatraceOdds/v3/${date.slice(0,4)}/${ymd}.json`;
+ const csvBase=`https://boatracecsv.github.io/data/previews/`;
+ function parseCsv(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(c===','&&!quoted){row.push(cell);cell='';}else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(x=>x!==''))rows.push(row);row=[];cell='';}else cell+=c;}if(cell||row.length){row.push(cell);rows.push(row);}return rows;}
+ async function csvMarket(market){const mm=date.slice(5,7),dd=date.slice(8,10),type='od'+market;
+  const endpoint=`${csvBase}${type}/${date.slice(0,4)}/${mm}/${dd}.csv`;
+  const response=await fetch(endpoint,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+  if(!response.ok)throw new Error(type+' HTTP '+response.status);
+  const rows=parseCsv((await response.text()).replace(/^\uFEFF/,''));if(rows.length<2)throw new Error(type+' データ未掲載');
+  const head=rows[0];const code=ymd+String(venue).padStart(2,'0')+String(race).padStart(2,'0');
+  const codeCol=head.indexOf('レースコード');if(codeCol<0)throw new Error(type+' レースコード列なし');
+  const matching=rows.slice(1).filter(r=>String(r[codeCol]||'').trim()===code);
+  if(!matching.length)throw new Error(type+' このレースは未収録（締切約5分前に掲載）');
+  const stampCol=head.indexOf('取得日時');matching.sort((a,b)=>String(a[stampCol]||'').localeCompare(String(b[stampCol]||'')));
+  const picked=matching[matching.length-1],out={};const pattern=market===3?/^3連単_([1-6]-[1-6]-[1-6])$/:/^2連単_([1-6]-[1-6])$/;
+  head.forEach((h,i)=>{const m=h.match(pattern);if(m){const v=normalizedOdds(picked[i]);if(v!==null)out[m[1]]=v;}});
+  if(!Object.keys(out).length)throw new Error(type+' 有効なオッズなし');return out;
+ }
  try{let result=null,source='';let errors=[];
- for(const candidate of [url,backup]){try{const res=await fetch(candidate,{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const found=locateRace(data,venue,race);if(!found)throw new Error('該当レースなし');const t2=readMarket(found,2),t3=readMarket(found,3);if(!Object.keys(t2).length&&!Object.keys(t3).length)throw new Error('オッズ未収録');result={2:t2,3:t3};source=candidate;break;}catch(err){errors.push(err.message);}}
+ // JSON sources may provide earlier snapshots. CSV is the documented near-deadline fallback.
+ for(const candidate of [backup,url]){try{const res=await fetch(candidate,{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const found=locateRace(data,venue,race);if(!found)throw new Error('該当レースなし');const t2=readMarket(found,2),t3=readMarket(found,3);if(!Object.keys(t2).length&&!Object.keys(t3).length)throw new Error('オッズ未収録');result={2:t2,3:t3};source=candidate;break;}catch(err){errors.push(err.message);}}
+ if(!result){const markets=await Promise.allSettled([csvMarket(2),csvMarket(3)]);const t2=markets[0].status==='fulfilled'?markets[0].value:{};const t3=markets[1].status==='fulfilled'?markets[1].value:{};
+ if(Object.keys(t2).length||Object.keys(t3).length){result={2:t2,3:t3};source='BoatraceCSV（締切前スナップショット）';}
+ else errors.push(...markets.map(x=>x.status==='rejected'?String(x.reason.message||x.reason):'').filter(Boolean));}
  if(!result)throw new Error(errors.join(' / '));loadedOdds=result;loadedRaceKey=key;loadedSource=source;
  // Avoid carrying odds from a previously selected race into the newly selected race.
  odds={};applyOdds();render();const count=Object.keys(result[2]).length+Object.keys(result[3]).length;
- status.textContent=`${venueNames[venue-1]} ${race}R｜${count}件取得（${new Date().toLocaleString('ja-JP')} 確認）。非公式・遅延あり。購入前に公式オッズを確認してな。`;
- }catch(err){loadedOdds={};loadedRaceKey='';loadedSource='';odds={};render();status.textContent='オッズ取得失敗：'+String(err.message||err).slice(0,180)+'。現在の取得先で利用可能なオッズを確認できません。手入力を使ってな。';console.warn('Odds fetch:',err);}
+ status.textContent=`${venueNames[venue-1]} ${race}R｜${count}件取得（${new Date().toLocaleString('ja-JP')} 確認）。取得元：${source.includes("BoatraceCSV")?"BoatraceCSV":"非公式JSON"}。速報・確定値ではないため購入前に公式オッズを確認してな。`;
+ }catch(err){loadedOdds={};loadedRaceKey='';loadedSource='';odds={};render();status.textContent='オッズ取得失敗：'+String(err.message||err).slice(0,180)+'。締切約5分前のCSV公開前、未開催、または配信遅延の可能性があります。手入力も利用できるで。';console.warn('Odds fetch:',err);}
  finally{btn.disabled=false;autoBusy=false;if(autoToggle.checked)nextAutoAt=Date.now()+300000;autoStatus();}
 });
 for(const id of ['tl-date','tl-venue','tl-race'])$(id).addEventListener('change',()=>{loadedOdds={};loadedRaceKey='';odds={};render();status.textContent='レースを変更したで。「オッズを取得」を押してな。';restartAuto();});
