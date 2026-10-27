@@ -762,7 +762,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 function init(){
  const root=document.getElementById('recent-period-analysis');if(!root)return;
  const range=root.querySelector('#recent-date-range'),totals=root.querySelector('#recent-metrics'),courses=root.querySelector('#recent-course-grid'),comparison=root.querySelector('#recent-comparison'),picker=root.querySelector('#forecast-course-picker'),focus=root.querySelector('#forecast-focus');
- let selectedCourse=null;
+ let selectedCourse=1;
  try{
  const records=[...document.querySelectorAll('#log article.entry')].map(el=>{
    const source=el.getAttribute('data-search')||el.querySelector('strong')?.textContent||'';
