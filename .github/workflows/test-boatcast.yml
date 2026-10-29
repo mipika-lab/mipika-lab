@@ -21,7 +21,7 @@ jobs:
         run: |
           composer require boatrace/scraper-boatcast --no-interaction --no-progress
 
-      - name: Test January historical odds
+      - name: Test historical odds
         run: |
           cat > test.php <<'PHP'
           <?php
@@ -29,8 +29,8 @@ jobs:
 
           use Boatrace\BoatcastScraper\BoatcastScraper;
 
-          $date = '2026-01-01';
-          $stadium = 1;
+          $date = '2026-10-29';
+          $stadium = 14;
           $race = 1;
 
           echo "Testing: $date, stadium $stadium, race $race\n";
@@ -63,10 +63,11 @@ jobs:
                   "\n";
 
               if ($valid === 0) {
-                  echo "NO DATA: This race may not have been held or historical odds may be unavailable.\n";
+                  echo "NO DATA: Odds unavailable.\n";
               } else {
-                  echo "SUCCESS: Historical trifecta odds retrieved.\n";
+                  echo "SUCCESS: Historical odds retrieved.\n";
               }
+
           } catch (Throwable $e) {
               echo "ERROR: " . $e->getMessage() . "\n";
               exit(1);
