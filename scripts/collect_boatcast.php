@@ -16,57 +16,135 @@ $end = new DateTimeImmutable(
 );
 
 if ($start > $end) {
-    fwrite(STDERR, "ERROR: Invalid date range\n");
-    exit(1);
+    exit("ERROR: Invalid date range\n");
 }
 
 $root = dirname(__DIR__);
 
 $csvDir = $root . '/data/csv_odds';
-
 $outputDir = $root . '/data/boatcast_odds';
 
 if (!is_dir($outputDir)) {
     mkdir($outputDir, 0775, true);
 }
 
-$total = 0;
-$success = 0;
-$failed = 0;
-$already = 0;
-$updatedDays = 0;
-
 /*
- * 3連単120通りの確認
+ * 3連単オッズの完全性を確認する。
+ *
+ * 6艇立て：120通り
+ * 5艇立て： 60通り
+ *
+ * 数だけでなく、すべての組み合わせが
+ * 存在するかも確認する。
  */
-function countValidOdds(array $odds): int
+function validateOdds(array $odds): array
 {
-    $count = 0;
+    $combinations = [];
+    $boats = [];
 
-    foreach ($odds as $seconds) {
+    foreach ($odds as $first => $seconds) {
+
         if (!is_array($seconds)) {
             continue;
         }
 
-        foreach ($seconds as $thirds) {
+        foreach ($seconds as $second => $thirds) {
+
             if (!is_array($thirds)) {
                 continue;
             }
 
-            foreach ($thirds as $odd) {
-                if (is_numeric($odd) && $odd > 0) {
-                    $count++;
+            foreach ($thirds as $third => $odd) {
+
+                $a = (int)$first;
+                $b = (int)$second;
+                $c = (int)$third;
+
+                if (
+                    $a < 1 || $a > 6 ||
+                    $b < 1 || $b > 6 ||
+                    $c < 1 || $c > 6 ||
+                    $a === $b ||
+                    $a === $c ||
+                    $b === $c ||
+                    !is_numeric($odd) ||
+                    (float)$odd <= 0
+                ) {
+                    continue;
+                }
+
+                $key = "$a-$b-$c";
+
+                $combinations[$key] = true;
+
+                $boats[$a] = true;
+                $boats[$b] = true;
+                $boats[$c] = true;
+            }
+        }
+    }
+
+    $count = count($combinations);
+    $boatCount = count($boats);
+
+    if (
+        !(
+            ($boatCount === 6 && $count === 120) ||
+            ($boatCount === 5 && $count === 60)
+        )
+    ) {
+        return [
+            'valid' => false,
+            'count' => $count,
+            'boats' => $boatCount
+        ];
+    }
+
+    /*
+     * 全組み合わせを確認
+     */
+    $numbers = array_keys($boats);
+
+    foreach ($numbers as $a) {
+        foreach ($numbers as $b) {
+            foreach ($numbers as $c) {
+
+                if (
+                    $a === $b ||
+                    $a === $c ||
+                    $b === $c
+                ) {
+                    continue;
+                }
+
+                if (
+                    !isset(
+                        $combinations["$a-$b-$c"]
+                    )
+                ) {
+                    return [
+                        'valid' => false,
+                        'count' => $count,
+                        'boats' => $boatCount
+                    ];
                 }
             }
         }
     }
 
-    return $count;
+    return [
+        'valid' => true,
+        'count' => $count,
+        'boats' => $boatCount
+    ];
 }
 
-/*
- * 日付ごとの収集
- */
+$total = 0;
+$already = 0;
+$recovered = 0;
+$failed = 0;
+$updatedDays = 0;
+
 for (
     $day = $start;
     $day <= $end;
@@ -74,11 +152,9 @@ for (
 ) {
 
     $date = $day->format('Y-m-d');
-
     $ymd = $day->format('Ymd');
 
     $csvFile = "$csvDir/$ymd.csv";
-
     $output = "$outputDir/$ymd.json";
 
     echo "\n====================\n";
@@ -86,15 +162,15 @@ for (
     echo "====================\n";
 
     /*
-     * CSVがない場合は安全にスキップ
+     * CSVの存在確認
      */
     if (!file_exists($csvFile)) {
-        echo "SKIP: CSV not found\n";
+        echo "SKIP: No CSV\n";
         continue;
     }
 
     /*
-     * 既存JSONの読み込み
+     * 既存データを読み込む
      */
     $records = [];
 
@@ -103,11 +179,7 @@ for (
         $raw = file_get_contents($output);
 
         if ($raw === false) {
-            fwrite(
-                STDERR,
-                "ERROR: Cannot read existing JSON\n"
-            );
-            exit(1);
+            exit("ERROR: Cannot read JSON\n");
         }
 
         $decoded = json_decode($raw, true);
@@ -117,21 +189,13 @@ for (
             !isset($decoded['odds']) ||
             !is_array($decoded['odds'])
         ) {
-            fwrite(
-                STDERR,
-                "ERROR: Existing JSON is invalid\n"
-            );
-            exit(1);
+            exit("ERROR: Invalid JSON\n");
         }
 
         foreach ($decoded['odds'] as $record) {
 
             if (!is_array($record)) {
-                fwrite(
-                    STDERR,
-                    "ERROR: Invalid existing record\n"
-                );
-                exit(1);
+                exit("ERROR: Invalid record\n");
             }
 
             $stadium = (int)(
@@ -148,11 +212,7 @@ for (
                 $race < 1 ||
                 $race > 12
             ) {
-                fwrite(
-                    STDERR,
-                    "ERROR: Invalid existing race key\n"
-                );
-                exit(1);
+                exit("ERROR: Invalid race key\n");
             }
 
             $key = "$stadium-$race";
@@ -162,20 +222,16 @@ for (
 
         echo "EXISTING: "
             . count($records)
-            . " races\n";
+            . "\n";
     }
 
     /*
-     * CSVから対象レースを取得
+     * 対象レースをCSVから抽出
      */
     $handle = fopen($csvFile, 'r');
 
     if ($handle === false) {
-        fwrite(
-            STDERR,
-            "ERROR: Cannot open CSV\n"
-        );
-        exit(1);
+        exit("ERROR: Cannot open CSV\n");
     }
 
     fgetcsv($handle);
@@ -189,7 +245,6 @@ for (
         }
 
         $stadium = (int)trim($row[2]);
-
         $race = (int)trim($row[3]);
 
         if (
@@ -213,43 +268,40 @@ for (
 
     echo "TARGET: "
         . count($races)
-        . " races\n";
+        . "\n";
 
     $changed = false;
 
     /*
-     * 未取得レースのみ再取得
+     * 未取得・不完全なレースだけ再取得
      */
     foreach ($races as $key => [$stadium, $race]) {
 
         $total++;
 
-        /*
-         * 保存済みなら取得しない
-         */
         if (isset($records[$key])) {
 
             $savedOdds =
                 $records[$key]['trifecta_odds']
                 ?? [];
 
-            if (
-                is_array($savedOdds) &&
-                countValidOdds($savedOdds) === 120
-            ) {
-                $already++;
+            if (is_array($savedOdds)) {
 
-                echo "EXISTS: "
-                    . "$stadium / $race\n";
+                $check = validateOdds($savedOdds);
 
-                continue;
+                if ($check['valid']) {
+
+                    $already++;
+
+                    echo "EXISTS: "
+                        . "$stadium / $race "
+                        . "("
+                        . $check['count']
+                        . " odds)\n";
+
+                    continue;
+                }
             }
-
-            /*
-             * 保存済みだが不完全なら再取得
-             */
-            echo "RETRY INCOMPLETE: "
-                . "$stadium / $race\n";
         }
 
         try {
@@ -263,18 +315,19 @@ for (
             $trifecta =
                 $result['trifecta'] ?? [];
 
-            $valid = is_array($trifecta)
-                ? countValidOdds($trifecta)
-                : 0;
-
             $fixed =
                 $result['is_fixed'] ?? false;
 
-            /*
-             * 完全な確定オッズのみ保存
-             */
+            $check = is_array($trifecta)
+                ? validateOdds($trifecta)
+                : [
+                    'valid' => false,
+                    'count' => 0,
+                    'boats' => 0
+                ];
+
             if (
-                $valid === 120 &&
+                $check['valid'] &&
                 $fixed
             ) {
 
@@ -285,13 +338,16 @@ for (
                     'trifecta_odds' => $trifecta
                 ];
 
-                $success++;
-
+                $recovered++;
                 $changed = true;
 
                 echo "RECOVERED: "
                     . "$stadium / $race "
-                    . "(120/120)\n";
+                    . "("
+                    . $check['boats']
+                    . " boats, "
+                    . $check['count']
+                    . " odds)\n";
 
             } else {
 
@@ -299,7 +355,13 @@ for (
 
                 echo "NO DATA: "
                     . "$stadium / $race "
-                    . "($valid/120)\n";
+                    . "("
+                    . $check['count']
+                    . " odds, "
+                    . $check['boats']
+                    . " boats, fixed="
+                    . ($fixed ? 'YES' : 'NO')
+                    . ")\n";
             }
 
         } catch (Throwable $e) {
@@ -316,7 +378,7 @@ for (
     }
 
     /*
-     * 新規取得があった場合だけ保存
+     * 新規データがある場合のみ保存
      */
     if ($changed) {
 
@@ -330,16 +392,9 @@ for (
         );
 
         if ($json === false) {
-            fwrite(
-                STDERR,
-                "ERROR: JSON encoding failed\n"
-            );
-            exit(1);
+            exit("ERROR: JSON encoding\n");
         }
 
-        /*
-         * 一時ファイルを経由して安全に更新
-         */
         $temporary = $output . '.tmp';
 
         if (
@@ -349,21 +404,12 @@ for (
                 LOCK_EX
             ) === false
         ) {
-            fwrite(
-                STDERR,
-                "ERROR: Cannot write temporary file\n"
-            );
-            exit(1);
+            exit("ERROR: Writing JSON\n");
         }
 
         if (!rename($temporary, $output)) {
             @unlink($temporary);
-
-            fwrite(
-                STDERR,
-                "ERROR: Cannot replace JSON\n"
-            );
-            exit(1);
+            exit("ERROR: Replacing JSON\n");
         }
 
         $updatedDays++;
@@ -378,20 +424,10 @@ for (
     }
 }
 
-/*
- * 最終結果
- */
-echo "\n";
-echo "===== FINISHED =====\n";
-
+echo "\n===== FINISHED =====\n";
 echo "TOTAL TARGETS: $total\n";
-
 echo "ALREADY SAVED: $already\n";
-
-echo "RECOVERED: $success\n";
-
+echo "RECOVERED: $recovered\n";
 echo "FAILED: $failed\n";
-
 echo "UPDATED DAYS: $updatedDays\n";
-
 echo "====================\n";
