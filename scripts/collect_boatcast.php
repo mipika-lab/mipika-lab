@@ -8,79 +8,113 @@ use Boatrace\BoatcastScraper\BoatcastScraper;
 
 set_time_limit(0);
 
-$start = new DateTimeImmutable('2026-01-01');
-$end = new DateTimeImmutable('2026-10-29');
-$outputDir = __DIR__ . '/../data/boatcast_odds';
-$csvDir = __DIR__ . '/../data/csv_odds';
+$start = new DateTimeImmutable($argv[1] ?? '2026-07-20');
+$end = new DateTimeImmutable($argv[2] ?? '2026-07-20');
+
+$root = dirname(__DIR__);
+$csvDir = $root . '/data/csv_odds';
+$outputDir = $root . '/data/boatcast_odds';
 
 if (!is_dir($outputDir)) {
     mkdir($outputDir, 0775, true);
 }
 
-$totalDays = 0;
-$savedDays = 0;
+$total = 0;
 $success = 0;
 $failed = 0;
 
 for ($day = $start; $day <= $end; $day = $day->modify('+1 day')) {
     $date = $day->format('Y-m-d');
     $ymd = $day->format('Ymd');
+    $csvFile = "$csvDir/$ymd.csv";
     $output = "$outputDir/$ymd.json";
 
     if (file_exists($output)) {
-        echo "SKIP $date: already saved\n";
+        echo "SKIP $date: already collected\n";
         continue;
     }
 
-    // CSVがある日を対象にする
-    if (!file_exists("$csvDir/$ymd.csv")) {
+    if (!file_exists($csvFile)) {
         echo "SKIP $date: no CSV\n";
         continue;
     }
 
-    $totalDays++;
+    $handle = fopen($csvFile, 'r');
+    if (!$handle) {
+        echo "ERROR $date: cannot open CSV\n";
+        continue;
+    }
+
+    // CSVの先頭6列を使う
+    $header = fgetcsv($handle);
+    $races = [];
+
+    while (($row = fgetcsv($handle)) !== false) {
+        if (count($row) < 4) continue;
+
+        $stadium = (int) trim($row[2]);
+        $race = (int) trim($row[3]);
+
+        if ($stadium < 1 || $stadium > 24 ||
+            $race < 1 || $race > 12) {
+            continue;
+        }
+
+        $races["$stadium-$race"] = [$stadium, $race];
+    }
+
+    fclose($handle);
+
+    echo "$date: " . count($races) . " races found\n";
+
     $records = [];
 
-    // まず開催場を1～24で確認
-    for ($stadium = 1; $stadium <= 24; $stadium++) {
-        for ($race = 1; $race <= 12; $race++) {
-            try {
-                $result = BoatcastScraper::scrapeOdds(
-                    $date, $stadium, $race
-                )->getValue();
+    foreach ($races as [$stadium, $race]) {
+        $total++;
 
-                $trifecta = $result['trifecta'] ?? [];
-                $valid = 0;
+        try {
+            $result = BoatcastScraper::scrapeOdds(
+                $date,
+                $stadium,
+                $race
+            )->getValue();
 
-                foreach ($trifecta as $seconds) {
-                    if (!is_array($seconds)) continue;
-                    foreach ($seconds as $thirds) {
-                        if (!is_array($thirds)) continue;
-                        foreach ($thirds as $odd) {
-                            if (is_numeric($odd) && $odd > 0) {
-                                $valid++;
-                            }
+            $trifecta = $result['trifecta'] ?? [];
+            $valid = 0;
+
+            foreach ($trifecta as $seconds) {
+                if (!is_array($seconds)) continue;
+                foreach ($seconds as $thirds) {
+                    if (!is_array($thirds)) continue;
+                    foreach ($thirds as $odd) {
+                        if (is_numeric($odd) && $odd > 0) {
+                            $valid++;
                         }
                     }
                 }
-
-                if ($valid === 120 && ($result['is_fixed'] ?? false)) {
-                    $records[] = [
-                        'date' => $date,
-                        'stadium_number' => $stadium,
-                        'number' => $race,
-                        'trifecta_odds' => $trifecta
-                    ];
-                    $success++;
-                } else {
-                    $failed++;
-                }
-            } catch (Throwable $e) {
-                $failed++;
             }
 
-            usleep(300000);
+            if ($valid === 120 &&
+                ($result['is_fixed'] ?? false)) {
+                $records[] = [
+                    'date' => $date,
+                    'stadium_number' => $stadium,
+                    'number' => $race,
+                    'trifecta_odds' => $trifecta
+                ];
+
+                $success++;
+            } else {
+                $failed++;
+                echo "NO DATA: $stadium / $race ($valid)\n";
+            }
+        } catch (Throwable $e) {
+            $failed++;
+            echo "ERROR: $stadium / $race: " .
+                $e->getMessage() . "\n";
         }
+
+        usleep(500000);
     }
 
     if ($records) {
@@ -91,13 +125,11 @@ for ($day = $start; $day <= $end; $day = $day->modify('+1 day')) {
                 JSON_UNESCAPED_UNICODE
             )
         );
-        $savedDays++;
-    }
 
-    echo "$date: " . count($records) . " races saved\n";
+        echo "SAVED $date: " . count($records) . " races\n";
+    }
 }
 
-echo "DAYS CHECKED: $totalDays\n";
-echo "DAYS SAVED: $savedDays\n";
-echo "SUCCESS RACES: $success\n";
-echo "OTHER RESULTS: $failed\n";
+echo "TOTAL: $total\n";
+echo "SUCCESS: $success\n";
+echo "FAILED: $failed\n";
