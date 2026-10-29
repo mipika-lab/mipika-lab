@@ -1,339 +1,294 @@
 (() => {
-  "use strict";
+"use strict";
 
-  if (document.getElementById("ml-bottom-nav")) return;
+const old = document.getElementById("ml-bottom-nav");
+if (old) old.remove();
 
-  const style = document.createElement("style");
+const oldPanel = document.getElementById("ml-home-panel");
+if (oldPanel) oldPanel.remove();
 
-  style.textContent = `
-    :root {
-      --ml-brown: #604638;
-      --ml-dark: #392820;
-      --ml-pink: #e7a8be;
-      --ml-bg: #faf5f0;
-      --ml-white: #ffffff;
-    }
+const css = document.createElement("style");
 
-    body {
-      background: var(--ml-bg);
-      color: var(--ml-dark);
-      padding-bottom: calc(85px + env(safe-area-inset-bottom));
-    }
+css.textContent = `
+:root {
+  --brown:#604638;
+  --brown-light:#8b6b56;
+  --cream:#f7f2eb;
+  --pink:#e9b8ca;
+}
 
-    body > header {
-      background: linear-gradient(135deg, #392820, #765343);
-      color: white;
-      border-bottom: 4px solid var(--ml-pink);
-      padding: 24px 18px;
-    }
+body {
+  background:#f7f2eb !important;
+  color:#574134 !important;
+  padding-bottom:90px !important;
+}
 
-    body > header h1 {
-      color: white;
-      font-size: 26px;
-    }
+body > header {
+  background:#604638 !important;
+  border-bottom:3px solid #e9b8ca !important;
+  border-radius:0 !important;
+  padding:18px !important;
+}
 
-    body > nav {
-      background: #fff9f6;
-      border-bottom: 1px solid #e8d6cc;
-    }
+body > header h1 {
+  color:white !important;
+}
 
-    body > nav a {
-      background: #f1e6df;
-      color: #604638;
-    }
+body > nav:not(#ml-bottom-nav) {
+  background:#fffaf6 !important;
+  border-bottom:1px solid #e8d7c9 !important;
+}
 
-    body > nav a:hover {
-      background: #f7e1e9;
-    }
+body > nav:not(#ml-bottom-nav) a {
+  background:#eee6dc !important;
+  color:#604638 !important;
+}
 
-    main {
-      max-width: 1080px;
-    }
+main {
+  max-width:1000px;
+}
 
-    main section .panel {
-      background: white;
-      border-color: #e8d6cc;
-      border-radius: 16px;
-    }
+#ml-home-panel {
+  margin:12px 0 24px;
+}
 
-    #ml-home-panel {
-      margin: 8px 0 26px;
-    }
+#ml-home-panel .ml-hero {
+  background:linear-gradient(135deg,#604638,#907362);
+  border-radius:18px;
+  padding:24px 20px;
+  color:white;
+}
 
-    #ml-home-panel .ml-hero {
-      background: linear-gradient(135deg, #604638, #8c6958);
-      padding: 26px 20px;
-      border-radius: 20px;
-      color: white;
-      box-shadow: 0 5px 18px #39282022;
-    }
+#ml-home-panel .ml-eyebrow {
+  font-size:12px;
+  font-weight:800;
+  color:#f4d5df;
+  letter-spacing:2px;
+}
 
-    #ml-home-panel .ml-eyebrow {
-      color: #f8d4e1;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 2px;
-    }
+#ml-home-panel h2 {
+  color:white;
+  font-size:clamp(22px,5vw,30px);
+  margin:12px 0;
+}
 
-    #ml-home-panel h2 {
-      font-size: clamp(23px, 5vw, 34px);
-      color: white;
-      margin: 12px 0;
-    }
+#ml-home-panel .ml-sub {
+  color:#fff2ea;
+  font-size:14px;
+}
 
-    #ml-home-panel .ml-sub {
-      color: #fff2eb;
-      font-size: 14px;
-      margin: 0;
-    }
+#ml-home-panel .ml-label {
+  font-size:18px;
+  font-weight:800;
+  color:#604638;
+  margin:22px 0 14px;
+}
 
-    #ml-home-panel .ml-label {
-      font-size: 18px;
-      font-weight: 800;
-      color: #604638;
-      margin: 22px 0 14px;
-      border-left: 5px solid #e7a8be;
-      padding-left: 10px;
-    }
+#ml-home-panel .ml-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px;
+}
 
-    #ml-home-panel .ml-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
+#ml-home-panel .ml-card {
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  padding:17px 13px;
+  background:white;
+  border:1px solid #eadbd1;
+  border-radius:16px;
+  text-decoration:none;
+  color:#604638;
+  box-shadow:0 3px 10px #60463812;
+}
 
-    #ml-home-panel .ml-card {
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-      text-decoration: none;
-      background: white;
-      border: 1px solid #eadbd2;
-      border-radius: 17px;
-      padding: 20px 15px;
-      color: #392820;
-      box-shadow: 0 3px 12px #39282012;
-      transition: transform .2s, box-shadow .2s;
-    }
+#ml-home-panel .ml-icon {
+  font-size:25px;
+}
 
-    #ml-home-panel .ml-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 18px #39282022;
-    }
+#ml-home-panel .ml-card strong {
+  font-size:15px;
+  color:#604638;
+}
 
-    #ml-home-panel .ml-card:focus-visible {
-      outline: 3px solid #b87f95;
-      outline-offset: 2px;
-    }
+#ml-home-panel .ml-card small {
+  font-size:12px;
+  color:#887568;
+  line-height:1.5;
+}
 
-    #ml-home-panel .ml-icon {
-      font-size: 27px;
-      color: #9b6f59;
-    }
+#ml-bottom-nav {
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:0 !important;
+  top:auto !important;
+  z-index:9999 !important;
+  display:flex !important;
+  justify-content:space-around;
+  background:#604638 !important;
+  border-top:3px solid #e9b8ca;
+  padding:7px 4px calc(7px + env(safe-area-inset-bottom));
+  box-shadow:0 -3px 12px #0002;
+}
 
-    #ml-home-panel .ml-card strong {
-      font-size: 15px;
-      color: #604638;
-    }
+#ml-bottom-nav a {
+  display:flex !important;
+  flex:1;
+  min-width:0;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:7px 2px;
+  color:white !important;
+  background:transparent !important;
+  text-decoration:none;
+  font-size:11px;
+  font-weight:700;
+  border-radius:10px;
+}
 
-    #ml-home-panel .ml-card small {
-      font-size: 12px;
-      color: #887267;
-      line-height: 1.5;
-    }
+#ml-bottom-nav a span {
+  font-size:22px;
+}
 
-    #ml-bottom-nav {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 1000;
-      display: flex;
-      justify-content: space-around;
-      background: #392820;
-      border-top: 3px solid #e7a8be;
-      padding:
-        6px 5px
-        calc(7px + env(safe-area-inset-bottom));
-      box-shadow: 0 -4px 15px #39282033;
-    }
+#ml-bottom-nav a[aria-current="page"] {
+  background:#866755 !important;
+  color:#ffe0eb !important;
+}
 
-    #ml-bottom-nav a {
-      display: flex;
-      flex: 1;
-      min-width: 0;
-      align-items: center;
-      flex-direction: column;
-      justify-content: center;
-      gap: 4px;
-      color: white;
-      text-decoration: none;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 8px 3px;
-      border-radius: 12px;
-    }
+#ml-bottom-nav a:focus-visible,
+#ml-home-panel a:focus-visible {
+  outline:3px solid #e9b8ca;
+  outline-offset:2px;
+}
 
-    #ml-bottom-nav a span {
-      font-size: 21px;
-    }
+section[id] {
+  scroll-margin-top:85px;
+}
 
-    #ml-bottom-nav a[aria-current="page"] {
-      background: #765343;
-      color: #ffd6e4;
-    }
-
-    section[id] {
-      scroll-margin-top: 85px;
-    }
-
-    @media (max-width: 620px) {
-      #ml-home-panel .ml-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      #ml-home-panel .ml-card {
-        padding: 16px 12px;
-      }
-
-      #ml-home-panel .ml-card strong {
-        font-size: 14px;
-      }
-    }
-
-    @media (min-width: 900px) {
-      #ml-bottom-nav {
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%);
-        width: min(700px, 100%);
-        border-radius: 18px 18px 0 0;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      #ml-home-panel .ml-card {
-        transition: none;
-      }
-    }
-  `;
-
-  document.head.append(style);
-
-  const home = document.getElementById("home");
-
-  if (!home) return;
-
-  const panel = document.createElement("div");
-
-  panel.id = "ml-home-panel";
-
-  panel.innerHTML = `
-    <div class="ml-hero">
-      <div class="ml-eyebrow">
-        MIPIKA LAB · 5264
-      </div>
-
-      <h2>登みひ果を、誰よりも深く。</h2>
-
-      <p class="ml-sub">
-        レースは真剣に分析。応援は全力で。
-      </p>
-    </div>
-
-    <div class="ml-label">
-      🤎 何を調べる？
-    </div>
-
-    <div class="ml-grid">
-
-      <a class="ml-card" href="#data">
-        <span class="ml-icon">📊</span>
-        <strong>成績分析</strong>
-        <small>コース別・期間別</small>
-      </a>
-
-      <a class="ml-card" href="#log">
-        <span class="ml-icon">🚤</span>
-        <strong>レース履歴</strong>
-        <small>全出走から検索</small>
-      </a>
-
-      <a class="ml-card" href="#schedule">
-        <span class="ml-icon">📅</span>
-        <strong>出走予定</strong>
-        <small>次の開催を確認</small>
-      </a>
-
-      <a class="ml-card" href="./odds.html">
-        <span class="ml-icon">💰</span>
-        <strong>オッズ分析</strong>
-        <small>買い目・資金分配</small>
-      </a>
-
-      <a class="ml-card" href="#log">
-        <span class="ml-icon">🔍</span>
-        <strong>詳細検索</strong>
-        <small>開催場・コース・着順</small>
-      </a>
-
-      <a class="ml-card" href="#gallery">
-        <span class="ml-icon">📸</span>
-        <strong>ギャラリー</strong>
-        <small>写真・動画</small>
-      </a>
-
-    </div>
-  `;
-
-  home.prepend(panel);
-
-  const items = [
-    ["#home", "🏠", "HOME"],
-    ["#data", "📊", "成績"],
-    ["#log", "🚤", "履歴"],
-    ["./odds.html", "💰", "オッズ"],
-    ["#schedule", "☰", "予定"]
-  ];
-
-  const nav = document.createElement("nav");
-
-  nav.id = "ml-bottom-nav";
-  nav.setAttribute("aria-label", "下部メニュー");
-
-  for (const [href, icon, label] of items) {
-    const a = document.createElement("a");
-
-    a.href = href;
-
-    const span = document.createElement("span");
-    span.textContent = icon;
-    span.setAttribute("aria-hidden", "true");
-
-    const small = document.createElement("small");
-    small.textContent = label;
-
-    a.append(span, small);
-
-    if (href === "#home") {
-      a.setAttribute("aria-current", "page");
-    }
-
-    nav.append(a);
+@media(min-width:700px) {
+  #ml-home-panel .ml-grid {
+    grid-template-columns:repeat(3,minmax(0,1fr));
   }
 
-  document.body.append(nav);
+  #ml-bottom-nav {
+    left:50% !important;
+    right:auto !important;
+    transform:translateX(-50%);
+    width:min(700px,100%);
+    border-radius:16px 16px 0 0;
+  }
+}
+`;
 
-  nav.addEventListener("click", e => {
-    const link = e.target.closest("a");
-    if (!link) return;
+document.head.appendChild(css);
 
-    nav.querySelectorAll("a").forEach(a => {
+const home = document.getElementById("home");
+
+if (!home) return;
+
+const panel = document.createElement("div");
+
+panel.id = "ml-home-panel";
+
+panel.innerHTML = `
+<div class="ml-hero">
+  <div class="ml-eyebrow">MIPIKA LAB · 5264</div>
+  <h2>登みひ果を、誰よりも深く。</h2>
+  <p class="ml-sub">レースは真剣に分析。応援は全力で。</p>
+</div>
+
+<div class="ml-label">🤎 何を調べる？</div>
+
+<div class="ml-grid">
+
+<a class="ml-card" href="#data">
+<span class="ml-icon">📊</span>
+<strong>成績分析</strong>
+<small>コース別・期間別</small>
+</a>
+
+<a class="ml-card" href="#log">
+<span class="ml-icon">🚤</span>
+<strong>レース履歴</strong>
+<small>179走の記録を検索</small>
+</a>
+
+<a class="ml-card" href="#schedule">
+<span class="ml-icon">📅</span>
+<strong>出走予定</strong>
+<small>次の開催を確認</small>
+</a>
+
+<a class="ml-card" href="./odds.html">
+<span class="ml-icon">💰</span>
+<strong>オッズ分析</strong>
+<small>買い目・資金分配</small>
+</a>
+
+<a class="ml-card" href="#log">
+<span class="ml-icon">🔍</span>
+<strong>詳細検索</strong>
+<small>開催場・コース・着順</small>
+</a>
+
+<a class="ml-card" href="#gallery">
+<span class="ml-icon">📸</span>
+<strong>ギャラリー</strong>
+<small>写真・動画</small>
+</a>
+
+</div>
+`;
+
+home.prepend(panel);
+
+const nav = document.createElement("nav");
+
+nav.id = "ml-bottom-nav";
+nav.setAttribute("aria-label","下部メニュー");
+
+const menus = [
+["#home","🏠","HOME"],
+["#data","📊","成績"],
+["#log","🚤","履歴"],
+["./odds.html","💰","オッズ"],
+["#schedule","📅","予定"]
+];
+
+menus.forEach(([href,icon,label]) => {
+  const a = document.createElement("a");
+  a.href = href;
+
+  const span = document.createElement("span");
+  span.textContent = icon;
+  span.setAttribute("aria-hidden","true");
+
+  const small = document.createElement("small");
+  small.textContent = label;
+
+  a.append(span,small);
+  nav.appendChild(a);
+});
+
+document.body.appendChild(nav);
+
+function updateNav() {
+  const hash = window.location.hash || "#home";
+
+  nav.querySelectorAll("a").forEach(a => {
+    if (a.getAttribute("href") === hash) {
+      a.setAttribute("aria-current","page");
+    } else {
       a.removeAttribute("aria-current");
-    });
-
-    link.setAttribute("aria-current", "page");
+    }
   });
+}
+
+window.addEventListener("hashchange",updateNav);
+updateNav();
 
 })();
