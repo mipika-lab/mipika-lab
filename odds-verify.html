@@ -1,0 +1,416 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>オッズデータ検証 | みぴか研究所</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#faf3fb;color:#392344;font-family:system-ui,sans-serif}
+header{background:#392344;color:white;padding:22px}
+h1{font-size:23px;margin:0 0 7px}
+main{max-width:1100px;margin:auto;padding:15px}
+section{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 2px 12px #0000000a}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+label{font-size:14px}
+input,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #ccc}
+button{background:#75428c;color:white;border:0;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px}
+.stat{background:#f6eff9;padding:13px;border-radius:10px;overflow-wrap:anywhere}
+.stat strong{display:block;font-size:24px;margin-top:5px}
+.note{font-size:13px;line-height:1.7;color:#716579}
+.progress{height:10px;background:#eee;border-radius:10px;overflow:hidden}
+#bar{height:100%;width:0;background:#75428c;transition:width .2s}
+.scroll{overflow:auto;max-height:570px}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:13px}
+th,td{text-align:left;padding:9px;border-bottom:1px solid #eee}
+th{position:sticky;top:0;background:#f5edf8}
+.good{color:#187545;font-weight:bold}
+.bad{color:#b42335;font-weight:bold}
+.warn{color:#9a6700;font-weight:bold}
+#message{white-space:pre-wrap;line-height:1.7}
+</style>
+</head>
+<body>
+<header>
+<h1>🔎 オッズデータ検証</h1>
+<div>みぴか研究所｜保存済みBoatcast JSONの品質確認</div>
+</header>
+<main>
+<section>
+<h2>検証する期間</h2>
+<div class="row">
+<label>開始日
+<input type="date" id="start" value="2026-07-20">
+</label>
+<label>終了日
+<input type="date" id="end">
+</label>
+<button id="run">検証開始</button>
+</div>
+<p class="note">
+保存済みJSONを読み取るだけの検証ページです。
+データの変更・削除・再取得は行いません。
+未収集の日付は「ファイルなし」として扱います。
+1レースにつき3連単120通りを検査します。
+</p>
+<div class="progress"><div id="bar"></div></div>
+<p id="message">期間を指定して検証を開始してください。</p>
+</section>
+
+<section>
+<h2>集計結果</h2>
+<div class="stats">
+<div class="stat">検査日数<strong id="days">0</strong></div>
+<div class="stat">JSONあり<strong id="files">0</strong></div>
+<div class="stat">検査レース<strong id="races">0</strong></div>
+<div class="stat">120通り正常<strong id="complete">0</strong></div>
+<div class="stat">不完全<strong id="incomplete">0</strong></div>
+<div class="stat">異常値<strong id="invalid">0</strong></div>
+<div class="stat">重複レース<strong id="duplicates">0</strong></div>
+<div class="stat">ファイルなし<strong id="missing">0</strong></div>
+</div>
+</section>
+
+<section>
+<h2>日付別検証結果</h2>
+<div class="scroll">
+<table>
+<thead>
+<tr>
+<th>日付</th>
+<th>ファイル</th>
+<th>レース数</th>
+<th>120通り正常</th>
+<th>不完全</th>
+<th>異常値</th>
+<th>重複</th>
+</tr>
+</thead>
+<tbody id="results">
+<tr><td colspan="7">まだ検証していません。</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>異常の詳細</h2>
+<div id="details" class="note">検証後に表示します。</div>
+</section>
+
+<p class="note">
+HOMEへ戻る：
+<a href="index.html">みぴか研究所 HOME</a>
+</p>
+</main>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+
+const today = new Date();
+$("end").value =
+  today.getFullYear() + "-" +
+  String(today.getMonth()+1).padStart(2,"0") + "-" +
+  String(today.getDate()).padStart(2,"0");
+
+function ymd(date) {
+  return date.replaceAll("-","");
+}
+
+function addDays(date, amount) {
+  const d = new Date(date + "T12:00:00");
+  d.setDate(d.getDate()+amount);
+  return d.getFullYear()+"-"+
+    String(d.getMonth()+1).padStart(2,"0")+"-"+
+    String(d.getDate()).padStart(2,"0");
+}
+
+function numberValue(v) {
+  return typeof v === "number" &&
+    Number.isFinite(v) && v > 0;
+}
+
+function inspectRace(race, expectedDate, seen) {
+  const problems = [];
+  const venue = Number(race.stadium_number);
+  const raceNo = Number(race.number);
+  const key = venue + "-" + raceNo;
+
+  if (race.date !== expectedDate) {
+    problems.push("日付不一致");
+  }
+
+  if (!Number.isInteger(venue) || venue < 1 || venue > 24) {
+    problems.push("競艇場番号異常");
+  }
+
+  if (!Number.isInteger(raceNo) || raceNo < 1 || raceNo > 12) {
+    problems.push("レース番号異常");
+  }
+
+  if (seen.has(key)) {
+    problems.push("重複レース");
+  }
+  seen.add(key);
+
+  const odds = race.trifecta_odds;
+  let count = 0;
+  let invalidCount = 0;
+
+  if (!odds || typeof odds !== "object" || Array.isArray(odds)) {
+    problems.push("trifecta_oddsなし");
+    return {
+      complete:false,
+      invalid:1,
+      duplicate:problems.includes("重複レース") ? 1 : 0,
+      problems
+    };
+  }
+
+  for (let a=1; a<=6; a++) {
+    for (let b=1; b<=6; b++) {
+      if (b===a) continue;
+      for (let c=1; c<=6; c++) {
+        if (c===a || c===b) continue;
+
+        const value = odds[String(a)]?.[String(b)]?.[String(c)];
+
+        if (value === undefined || value === null || value === "") {
+          continue;
+        }
+
+        if (numberValue(value)) {
+          count++;
+        } else {
+          invalidCount++;
+        }
+      }
+    }
+  }
+
+  if (count !== 120) {
+    problems.push("有効オッズ"+count+"/120");
+  }
+
+  if (invalidCount > 0) {
+    problems.push("異常なオッズ値"+invalidCount+"件");
+  }
+
+  return {
+    complete:count===120 && invalidCount===0 && problems.length===0,
+    invalid:invalidCount,
+    duplicate:problems.includes("重複レース") ? 1 : 0,
+    problems
+  };
+}
+
+async function inspectDate(date) {
+  const path = "data/boatcast_odds/" + ymd(date) + ".json";
+  const result = {
+    date, exists:false, races:0, complete:0,
+    incomplete:0, invalid:0, duplicates:0,
+    problems:[], status:"ファイルなし"
+  };
+
+  let response;
+
+  try {
+    response = await fetch(path + "?check=" + Date.now(), {
+      cache:"no-store"
+    });
+  } catch (e) {
+    result.status = "通信エラー";
+    result.problems.push("取得に失敗: " + e.message);
+    return result;
+  }
+
+  if (response.status === 404) return result;
+
+  if (!response.ok) {
+    result.status = "HTTP " + response.status;
+    result.problems.push("HTTPエラー " + response.status);
+    return result;
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (e) {
+    result.status = "JSON異常";
+    result.problems.push("JSONを解析できません");
+    return result;
+  }
+
+  result.exists = true;
+
+  if (!data || !Array.isArray(data.odds)) {
+    result.status = "形式異常";
+    result.problems.push("odds配列がありません");
+    return result;
+  }
+
+  result.status = "あり";
+  result.races = data.odds.length;
+  const seen = new Set();
+
+  for (let i=0; i<data.odds.length; i++) {
+    const race = data.odds[i];
+
+    if (!race || typeof race !== "object") {
+      result.incomplete++;
+      result.problems.push("レコード"+(i+1)+": 形式異常");
+      continue;
+    }
+
+    const check = inspectRace(race, date, seen);
+    result.invalid += check.invalid;
+    result.duplicates += check.duplicate;
+
+    if (check.complete) {
+      result.complete++;
+    } else {
+      result.incomplete++;
+    }
+
+    if (check.problems.length) {
+      result.problems.push(
+        "場"+race.stadium_number+
+        " R"+race.number+": "+
+        check.problems.join("、")
+      );
+    }
+  }
+
+  return result;
+}
+
+function setText(id, value) {
+  $(id).textContent = value;
+}
+
+function renderRow(r) {
+  const tr = document.createElement("tr");
+  const values = [
+    r.date,
+    r.status,
+    r.races,
+    r.complete,
+    r.incomplete,
+    r.invalid,
+    r.duplicates
+  ];
+
+  values.forEach((value, i) => {
+    const td = document.createElement("td");
+    td.textContent = value;
+
+    if (i===1) {
+      td.className = r.status==="あり" ? "good" :
+        r.status==="ファイルなし" ? "warn" : "bad";
+    }
+
+    if (i>=4 && Number(value)>0) td.className="bad";
+    tr.appendChild(td);
+  });
+
+  $("results").appendChild(tr);
+}
+
+$("run").addEventListener("click", async () => {
+  const start = $("start").value;
+  const end = $("end").value;
+
+  if (!start || !end || start>end) {
+    alert("開始日と終了日を正しく指定してください。");
+    return;
+  }
+
+  const days = Math.round(
+    (new Date(end+"T12:00:00")-
+     new Date(start+"T12:00:00"))/86400000
+  )+1;
+
+  if (days>400) {
+    alert("一度に検証できる期間は400日までです。");
+    return;
+  }
+
+  $("run").disabled=true;
+  $("results").replaceChildren();
+  $("details").textContent="検証中...";
+  $("bar").style.width="0%";
+  setText("message","検証を開始します。");
+  ["days","files","races","complete","incomplete",
+   "invalid","duplicates","missing"].forEach(id=>setText(id,"0"));
+
+  const totals = {
+    files:0, races:0, complete:0,
+    incomplete:0, invalid:0, duplicates:0, missing:0
+  };
+  const allProblems=[];
+  let finished=0;
+
+  try {
+    for (let offset=0; offset<days; offset+=5) {
+      const batch=[];
+
+      for (let j=offset; j<Math.min(offset+5,days); j++) {
+        batch.push(inspectDate(addDays(start,j)));
+      }
+
+      const results=await Promise.all(batch);
+
+      for (const r of results) {
+        finished++;
+
+        if (r.exists) totals.files++;
+        if (r.status==="ファイルなし") totals.missing++;
+        totals.races+=r.races;
+        totals.complete+=r.complete;
+        totals.incomplete+=r.incomplete;
+        totals.invalid+=r.invalid;
+        totals.duplicates+=r.duplicates;
+
+        renderRow(r);
+
+        if (r.problems.length) {
+          allProblems.push(r.date+"：\n  "+r.problems.join("\n  "));
+        }
+
+        $("bar").style.width=(finished/days*100)+"%";
+        setText("message",
+          "検証中 "+finished+"/"+days+" 日");
+      }
+    }
+
+    setText("days",days);
+    Object.entries(totals).forEach(([key,value])=>setText(key,value));
+
+    setText("message",
+      "検証完了！ "+days+"日分を確認しました。\n"+
+      "正常レース："+totals.complete+
+      "／不完全："+totals.incomplete+
+      "／ファイルなし："+totals.missing);
+
+    $("details").textContent = allProblems.length
+      ? allProblems.slice(0,500).join("\n\n")+
+        (allProblems.length>500
+          ? "\n\n※詳細は先頭500件まで表示しています。"
+          : "")
+      : "検出された異常はありません。";
+
+  } catch (e) {
+    setText("message","検証中にエラーが発生しました。\n"+e.message);
+    $("details").textContent=e.stack || e.message;
+  } finally {
+    $("run").disabled=false;
+  }
+});
+</script>
+</body>
+</html>
