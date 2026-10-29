@@ -3,82 +3,331 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>過去オッズ収集状況 | みぴか研究所</title>
+
+<title>オッズ収集状況｜みぴか研究所</title>
+
 <style>
+:root{
+  --brown:#604638;
+  --dark:#483428;
+  --cream:#f7f2eb;
+  --pink:#e9b8ca;
+  --line:#e5d6c9;
+  --white:#fffdfa;
+}
+
 *{box-sizing:border-box}
-body{margin:0;background:#faf3fb;color:#39283f;font-family:system-ui,sans-serif}
-header{background:#392344;color:#fff;padding:22px}
-h1{font-size:24px;margin:0 0 8px}
-main{max-width:1050px;margin:auto;padding:15px}
-section{background:#fff;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 2px 12px #0000000a}
-button,input{font:inherit;padding:10px;border-radius:8px;border:1px solid #ccc}
-button{background:#75428c;color:#fff;border:0;cursor:pointer}
-button:disabled{opacity:.5}
-.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
-.stat{background:#f6eff9;padding:15px;border-radius:10px}
-.stat strong{display:block;font-size:25px}
-.note{font-size:13px;color:#716579;line-height:1.7}
-.scroll{overflow-x:auto;max-height:600px}
-table{width:100%;border-collapse:collapse;min-width:590px}
-th,td{text-align:left;padding:10px;border-bottom:1px solid #eee}
-th{background:#f5edf8;position:sticky;top:0}
-.good{color:#17834e;font-weight:bold}
-.bad{color:#b33c43;font-weight:bold}
-.warn{color:#a06b12;font-weight:bold}
-#progress{font-weight:bold;line-height:1.7}
-a{color:#75428c}
+
+body{
+  margin:0;
+  background:var(--cream);
+  color:var(--dark);
+  font-family:system-ui,sans-serif;
+  line-height:1.65;
+}
+
+header{
+  background:var(--brown);
+  color:white;
+  padding:22px 17px;
+  border-bottom:3px solid var(--pink);
+}
+
+header h1{
+  font-size:24px;
+  margin:0 0 5px;
+}
+
+header p{
+  margin:0;
+  font-size:12px;
+  opacity:.9;
+}
+
+main{
+  max-width:1050px;
+  margin:auto;
+  padding:14px 14px 90px;
+}
+
+section{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:17px;
+  padding:18px;
+  margin:14px 0;
+}
+
+h2{
+  color:var(--brown);
+  font-size:19px;
+  margin:0 0 14px;
+}
+
+.row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:end;
+}
+
+label{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  font-size:13px;
+  font-weight:700;
+}
+
+input,button{
+  font:inherit;
+  border-radius:10px;
+  padding:11px;
+}
+
+input{
+  border:1px solid var(--line);
+  max-width:100%;
+  background:white;
+}
+
+button{
+  background:var(--brown);
+  color:white;
+  border:0;
+  cursor:pointer;
+  font-weight:700;
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:default;
+}
+
+button.secondary{
+  background:#eee4dc;
+  color:var(--dark);
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
+.stat{
+  background:#f3ece5;
+  border-radius:12px;
+  padding:13px;
+  font-size:12px;
+}
+
+.stat strong{
+  display:block;
+  font-size:25px;
+  color:var(--brown);
+  font-variant-numeric:tabular-nums;
+}
+
+.note{
+  font-size:12px;
+  color:#806b5f;
+  line-height:1.8;
+}
+
+.good{
+  color:#17764b;
+  font-weight:800;
+}
+
+.bad{
+  color:#b13540;
+  font-weight:800;
+}
+
+.warn{
+  color:#9a6814;
+  font-weight:800;
+}
+
+.scroll{
+  overflow-x:auto;
+  max-height:65vh;
+}
+
+table{
+  border-collapse:collapse;
+  width:100%;
+  min-width:700px;
+  font-size:13px;
+}
+
+th,td{
+  padding:11px 9px;
+  border-bottom:1px solid var(--line);
+  text-align:left;
+  white-space:nowrap;
+}
+
+th{
+  background:#eee5dc;
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+
+tr:nth-child(even){
+  background:#fbf7f2;
+}
+
+#progress{
+  margin-top:14px;
+  font-weight:800;
+}
+
+#issues{
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:12px;
+  background:#f7f1eb;
+  padding:14px;
+  border-radius:12px;
+  max-height:340px;
+  overflow:auto;
+}
+
+.links{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.links a{
+  background:#eee5dc;
+  color:var(--brown);
+  text-decoration:none;
+  padding:11px 13px;
+  border-radius:11px;
+  font-weight:700;
+  font-size:13px;
+}
+
+@media(min-width:700px){
+  .stats{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
 </style>
 </head>
+
 <body>
+
 <header>
-<h1>📊 過去オッズ収集状況</h1>
-みぴか研究所｜Boatcast・CSV保存データ確認
+<h1>🤎 オッズ収集状況</h1>
+<p>みぴか研究所｜過去データの保存・不足確認</p>
 </header>
 
 <main>
+
 <section>
-<h2>調査する期間</h2>
+<h2>📅 確認する期間</h2>
+
 <div class="row">
-<label>開始日
+<label>
+開始日
 <input id="start" type="date" value="2026-07-20">
 </label>
-<label>終了日
+
+<label>
+終了日
 <input id="end" type="date" value="2026-10-29">
 </label>
+
 <button id="check">収集状況を確認</button>
-<button id="stop" disabled>停止</button>
+
+<button id="stop" class="secondary" disabled>
+停止
+</button>
 </div>
+
 <p class="note">
-GitHub Pagesで公開済みの保存ファイルを確認します。
-新しいオッズの収集は行いません。
-確認中のデータは未公開の場合があります。
+公開済みのBoatcast JSONとCSVを照合します。
+データの追加収集は行いません。
+CSVがない日は対象レース数を確定できません。
 </p>
-<p id="progress">待機中</p>
+
+<p id="progress" role="status">
+待機中
+</p>
 </section>
 
 <section>
-<h2>集計結果</h2>
+<h2>📊 集計結果</h2>
+
 <div class="stats">
-<div class="stat">調査日数<strong id="days">0</strong></div>
-<div class="stat">Boatcastあり<strong id="boatDays">0</strong></div>
-<div class="stat">CSVあり<strong id="csvDays">0</strong></div>
-<div class="stat">Boatcastレース<strong id="races">0</strong></div>
-<div class="stat">120通り未満<strong id="partial">0</strong></div>
-<div class="stat">両方なし<strong id="missing">0</strong></div>
+
+<div class="stat">
+調査日数
+<strong id="days">0</strong>
+</div>
+
+<div class="stat">
+Boatcast保存日
+<strong id="boatDays">0</strong>
+</div>
+
+<div class="stat">
+CSV保存日
+<strong id="csvDays">0</strong>
+</div>
+
+<div class="stat">
+保存済みレース
+<strong id="saved">0</strong>
+</div>
+
+<div class="stat">
+CSV上の対象レース
+<strong id="expected">0</strong>
+</div>
+
+<div class="stat">
+未保存レース
+<strong id="missing">0</strong>
+</div>
+
+<div class="stat">
+不完全なオッズ
+<strong id="invalid">0</strong>
+</div>
+
+<div class="stat">
+正常な5艇立て
+<strong id="five">0</strong>
+</div>
+
+<div class="stat">
+確認できない日
+<strong id="unknown">0</strong>
+</div>
+
 </div>
 </section>
 
 <section>
-<h2>日付別一覧</h2>
+<h2>🚤 日付別の収集状況</h2>
+
 <div class="scroll">
 <table>
 <thead>
 <tr>
 <th>日付</th>
-<th>Boatcast</th>
-<th>レース数</th>
-<th>不足レース</th>
+<th>判定</th>
+<th>保存</th>
+<th>対象</th>
+<th>未保存</th>
+<th>不完全</th>
+<th>5艇立て</th>
 <th>CSV</th>
 </tr>
 </thead>
@@ -88,207 +337,271 @@ GitHub Pagesで公開済みの保存ファイルを確認します。
 </section>
 
 <section>
-<h2>確認方法</h2>
+<h2>🔍 要確認レース</h2>
+
 <p class="note">
-Boatcastの「不足レース」は、保存されたレースのうち、
-有効な3連単オッズが120通り未満の件数です。
-開催された全レースが収録されているかまでは判定しません。
-CSVはファイルの有無だけを確認します。
+未保存レース・不完全データ・ファイルの読込異常を表示します。
 </p>
-<a href="./odds.html">← ODDS LABへ戻る</a>
+
+<div id="issues">確認前です。</div>
 </section>
+
+<section>
+<h2>📌 判定ルール</h2>
+
+<p class="note">
+6艇立ては120通り、5艇立ては60通りの
+有効な3連単オッズを確認します。
+単純な件数だけでなく、対象となる艇の
+組み合わせがすべて存在するか検証します。
+<br><br>
+対象レース数はCSVに載っている
+開催場番号とレース番号から集計します。
+CSVがない日は保存済みデータの検証だけを行い、
+収集率100%とは判定しません。
+<br><br>
+この画面は保存ファイルの検証用です。
+取得元の開催情報との完全一致や、
+オッズの正確性そのものを保証するものではありません。
+</p>
+
+<div class="links">
+<a href="./index.html">🏠 HOME</a>
+<a href="./odds.html">💰 ODDS LAB</a>
+<a href="./odds-verify.html">🔍 詳細検証</a>
+</div>
+</section>
+
 </main>
 
 <script>
 "use strict";
 
-const $=id=>document.getElementById(id);
-let cancelled=false;
-let running=false;
+const $ = id => document.getElementById(id);
 
-function dateList(start,end){
- const out=[];
- const d=new Date(start+"T12:00:00Z");
- const last=new Date(end+"T12:00:00Z");
+let running = false;
+let cancelled = false;
 
- if(!start||!end||isNaN(d)||isNaN(last)||d>last){
-  throw Error("日付の範囲を確認してね");
- }
-
- while(d<=last){
-  out.push(d.toISOString().slice(0,10));
-  if(out.length>400){
-   throw Error("400日以内で指定してね");
-  }
-  d.setUTCDate(d.getUTCDate()+1);
- }
- return out;
-}
-
-async function request(url,kind){
- try{
-  const response=await fetch(url,{cache:"no-store"});
-  if(!response.ok)return null;
-  return kind==="json"?await response.json():true;
- }catch(e){
-  return null;
- }
-}
-
-function oddsCount(record){
- const odds=record.trifecta_odds;
- if(!odds||typeof odds!=="object")return 0;
-
- let count=0;
- for(let a=1;a<=6;a++){
-  for(let b=1;b<=6;b++){
-   for(let c=1;c<=6;c++){
-    if(a===b||b===c||a===c)continue;
-
-    const raw=odds[a]?.[b]?.[c];
-    const n=Number(raw);
-
-    if(raw!==null&&raw!==undefined&&raw!==""&&
-       Number.isFinite(n)&&n>0){
-      count++;
-    }
-   }
-  }
- }
- return count;
-}
-
-function setStats(stats){
- $("days").textContent=stats.days;
- $("boatDays").textContent=stats.boatDays;
- $("csvDays").textContent=stats.csvDays;
- $("races").textContent=stats.races;
- $("partial").textContent=stats.partial;
- $("missing").textContent=stats.missing;
-}
-
-async function checkDay(date){
- const ymd=date.replaceAll("-","");
-
- const [boat,csv]=await Promise.all([
-  request(`./data/boatcast_odds/${ymd}.json`,"json"),
-  request(`./data/csv_odds/${ymd}.csv`,"csv")
- ]);
-
- const records=Array.isArray(boat?.odds)?boat.odds:null;
- const partial=records
-  ?records.filter(r=>oddsCount(r)<120).length
-  :0;
-
- return {
-  date,
-  boat:records!==null,
-  races:records?records.length:0,
-  partial,
-  csv:csv!==null
- };
-}
-
-function addRow(data){
- const tr=document.createElement("tr");
-
- const values=[
-  data.date,
-  data.boat?"あり":"なし",
-  data.boat?String(data.races):"—",
-  data.boat?String(data.partial):"—",
-  data.csv?"あり":"なし"
- ];
-
- values.forEach((value,i)=>{
-  const td=document.createElement("td");
-  td.textContent=value;
-
-  if(i===1||i===4){
-   td.className=value==="あり"?"good":"bad";
-  }
-  if(i===3&&data.partial>0){
-   td.className="warn";
-  }
-
-  tr.append(td);
- });
-
- $("results").append(tr);
-}
-
-async function run(){
- if(running)return;
-
- let dates;
- try{
-  dates=dateList($("start").value,$("end").value);
- }catch(e){
-  $("progress").textContent=e.message;
-  return;
- }
-
- running=true;
- cancelled=false;
-
- $("check").disabled=true;
- $("stop").disabled=false;
- $("results").replaceChildren();
-
- const stats={
-  days:dates.length,
+const stats = {
+  days:0,
   boatDays:0,
   csvDays:0,
-  races:0,
-  partial:0,
-  missing:0
- };
+  saved:0,
+  expected:0,
+  missing:0,
+  invalid:0,
+  five:0,
+  unknown:0
+};
 
- setStats(stats);
-
- let completed=0;
-
- try{
-  for(let i=0;i<dates.length;i+=6){
-   if(cancelled)break;
-
-   const batch=dates.slice(i,i+6);
-   const results=await Promise.all(batch.map(checkDay));
-
-   for(const data of results){
-    addRow(data);
-    completed++;
-
-    if(data.boat)stats.boatDays++;
-    if(data.csv)stats.csvDays++;
-    stats.races+=data.races;
-    stats.partial+=data.partial;
-    if(!data.boat&&!data.csv)stats.missing++;
-   }
-
-   setStats(stats);
-   $("progress").textContent=
-    `確認中：${completed}/${dates.length}日`;
+function showStats(){
+  for(const [key,value] of Object.entries(stats)){
+    const element=$(key);
+    if(element){
+      element.textContent=value.toLocaleString();
+    }
   }
-
-  $("progress").textContent=cancelled
-   ?`停止しました：${completed}/${dates.length}日`
-   :`確認完了！ ${completed}日分を調査しました。`;
-
- }catch(e){
-  $("progress").textContent="エラー："+e.message;
- }finally{
-  running=false;
-  $("check").disabled=false;
-  $("stop").disabled=true;
- }
 }
 
-$("check").onclick=run;
-$("stop").onclick=()=>{
- cancelled=true;
- $("progress").textContent="停止処理中…";
-};
-</script>
-</body>
-</html>
+function datesBetween(start,end){
+  if(
+    !/^\d{4}-\d{2}-\d{2}$/.test(start) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(end)
+  ){
+    throw Error("日付を確認してね");
+  }
+
+  const first=new Date(start+"T12:00:00Z");
+  const last=new Date(end+"T12:00:00Z");
+
+  if(
+    !Number.isFinite(first.getTime()) ||
+    !Number.isFinite(last.getTime()) ||
+    first>last
+  ){
+    throw Error("日付の範囲を確認してね");
+  }
+
+  const result=[];
+
+  for(
+    let day=new Date(first);
+    day<=last;
+    day.setUTCDate(day.getUTCDate()+1)
+  ){
+    result.push(day.toISOString().slice(0,10));
+
+    if(result.length>400){
+      throw Error("400日以内で指定してね");
+    }
+  }
+
+  return result;
+}
+
+async function loadFile(url,type){
+  try{
+    const response=await fetch(url,{
+      cache:"no-store"
+    });
+
+    if(response.status===404){
+      return {status:"missing",data:null};
+    }
+
+    if(!response.ok){
+      return {
+        status:"error",
+        data:null,
+        message:"HTTP "+response.status
+      };
+    }
+
+    const data=type==="json"
+      ?await response.json()
+      :await response.text();
+
+    return {status:"ok",data};
+
+  }catch(e){
+    return {
+      status:"error",
+      data:null,
+      message:e.message
+    };
+  }
+}
+
+function validateOdds(record){
+  const odds=record?.trifecta_odds;
+
+  if(!odds||typeof odds!=="object"){
+    return {valid:false,count:0,boats:0};
+  }
+
+  const combos=new Set();
+  const boats=new Set();
+
+  for(let a=1;a<=6;a++){
+    for(let b=1;b<=6;b++){
+      for(let c=1;c<=6;c++){
+
+        if(a===b||a===c||b===c){
+          continue;
+        }
+
+        const raw=odds[a]?.[b]?.[c];
+
+        if(
+          raw===null ||
+          raw===undefined ||
+          raw===""
+        ){
+          continue;
+        }
+
+        const value=Number(raw);
+
+        if(
+          !Number.isFinite(value) ||
+          value<=0
+        ){
+          continue;
+        }
+
+        combos.add(`${a}-${b}-${c}`);
+
+        boats.add(a);
+        boats.add(b);
+        boats.add(c);
+      }
+    }
+  }
+
+  const count=combos.size;
+  const numbers=[...boats];
+  const n=numbers.length;
+
+  const expected=n*(n-1)*(n-2);
+
+  if(
+    ![5,6].includes(n) ||
+    count!==expected
+  ){
+    return {valid:false,count,boats:n};
+  }
+
+  for(const a of numbers){
+    for(const b of numbers){
+      for(const c of numbers){
+
+        if(a===b||a===c||b===c){
+          continue;
+        }
+
+        if(!combos.has(`${a}-${b}-${c}`)){
+          return {
+            valid:false,
+            count,
+            boats:n
+          };
+        }
+      }
+    }
+  }
+
+  return {valid:true,count,boats:n};
+}
+
+function parseCSVLine(line){
+  const values=[];
+  let current="";
+  let quoted=false;
+
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+
+    if(ch==='"'){
+      if(quoted&&line[i+1]==='"'){
+        current+='"';
+        i++;
+      }else{
+        quoted=!quoted;
+      }
+    }else if(ch===","&&!quoted){
+      values.push(current);
+      current="";
+    }else{
+      current+=ch;
+    }
+  }
+
+  values.push(current);
+
+  return values;
+}
+
+function csvRaces(text){
+  const rows=text.split(/\r?\n/).filter(Boolean);
+
+  if(rows.length<1){
+    throw Error("CSVが空です");
+  }
+
+  const targets=new Set();
+
+  for(const line of rows.slice(1)){
+    const row=parseCSVLine(line);
+
+    if(row.length<4)continue;
+
+    const venue=Number(row[2]);
+    const race=Number(row[3]);
+
+    if(
+      !Number.isInteger(venue) ||
+      !Number.isInteger(race) ||
+      venue<1||venue>24 ||
+      race<1||race>12
+    ){
+      continue;
