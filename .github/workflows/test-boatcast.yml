@@ -29,8 +29,8 @@ jobs:
 
           use Boatrace\BoatcastScraper\BoatcastScraper;
 
-          $date = '2026-10-29';
-          $stadium = 14;
+          $date = '2026-05-18';
+          $stadium = 2;
           $race = 1;
 
           echo "Testing: $date, stadium $stadium, race $race\n";
