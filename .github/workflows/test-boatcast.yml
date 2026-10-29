@@ -1,0 +1,76 @@
+
+name: Test Boatcast Historical Odds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install Boatcast scraper
+        run: |
+          composer require boatrace/scraper-boatcast --no-interaction --no-progress
+
+      - name: Test January historical odds
+        run: |
+          cat > test.php <<'PHP'
+          <?php
+          require __DIR__ . '/vendor/autoload.php';
+
+          use Boatrace\BoatcastScraper\BoatcastScraper;
+
+          $date = '2026-01-01';
+          $stadium = 1;
+          $race = 1;
+
+          echo "Testing: $date, stadium $stadium, race $race\n";
+
+          try {
+              $result = BoatcastScraper::scrapeOdds(
+                  $date,
+                  $stadium,
+                  $race
+              )->getValue();
+
+              $trifecta = $result['trifecta'] ?? [];
+              $valid = 0;
+
+              foreach ($trifecta as $seconds) {
+                  if (!is_array($seconds)) continue;
+                  foreach ($seconds as $thirds) {
+                      if (!is_array($thirds)) continue;
+                      foreach ($thirds as $odd) {
+                          if (is_numeric($odd) && $odd > 0) {
+                              $valid++;
+                          }
+                      }
+                  }
+              }
+
+              echo "Valid trifecta odds: $valid / 120\n";
+              echo "Fixed: " .
+                  (($result['is_fixed'] ?? false) ? 'yes' : 'no') .
+                  "\n";
+
+              if ($valid === 0) {
+                  echo "NO DATA: This race may not have been held or historical odds may be unavailable.\n";
+              } else {
+                  echo "SUCCESS: Historical trifecta odds retrieved.\n";
+              }
+          } catch (Throwable $e) {
+              echo "ERROR: " . $e->getMessage() . "\n";
+              exit(1);
+          }
+          PHP
+
+          php test.php
