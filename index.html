@@ -926,4 +926,4 @@ $('tl-reset').addEventListener('click',()=>{chosen=[[],[],[]];render();});
 $('tl-copy').addEventListener('click',async()=>{const unit=Number($('tl-unit').value);const data=`${kind}連単\n${chosen.slice(0,kind).map(a=>a.join('')).join('-')}\n${bets.length}点 各${unit}円 合計${bets.length*unit}円\n${bets.join(' / ')}`;try{await navigator.clipboard.writeText(data);$('tl-msg').textContent='買い目をコピーしたで！';}catch(e){$('tl-msg').textContent='コピーできなかったため、ブラウザのコピー機能を使ってな。';}});
 render();
 })();
-</script><script src="./mipika-redesign.js?v=20261030brown2" defer></script></body></html>
+</script><script src="./mipika-redesign.js?v=20261030final3" defer></script></body></html>
