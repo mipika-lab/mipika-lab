@@ -1,4 +1,3 @@
-
 name: Collect Boatcast Odds
 
 on:
@@ -7,11 +6,12 @@ on:
       start_date:
         description: "開始日 YYYY-MM-DD"
         required: true
-        default: "2026-07-20"
+        default: "2026-10-29"
       end_date:
         description: "終了日 YYYY-MM-DD"
         required: true
-        default: "2026-07-20"
+        default: "2026-10-29"
+
   schedule:
     - cron: "0 18 * * *"
 
@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: boatcast-daily
+  group: boatcast-collector
   cancel-in-progress: false
 
 jobs:
@@ -38,7 +38,9 @@ jobs:
           tools: composer
 
       - name: Install Boatcast scraper
-        run: composer require boatrace/scraper-boatcast --no-interaction
+        run: |
+          composer require boatrace/scraper-boatcast \
+            --no-interaction --no-progress
 
       - name: Set collection dates
         id: dates
@@ -64,27 +66,41 @@ jobs:
 
       - name: Commit downloaded data
         if: always()
+        shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -e
 
-          git fetch origin "$GITHUB_REF_NAME"
-          git rebase "origin/$GITHUB_REF_NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add data/boatcast_odds/
 
-          if ! git diff --cached --quiet; then
-            git commit -m "Update Boatcast historical odds"
-
-            for attempt in 1 2 3; do
-              if git push; then
-                exit 0
-              fi
-
-              git fetch origin "$GITHUB_REF_NAME"
-              git rebase "origin/$GITHUB_REF_NAME"
-            done
-
-            echo "ERROR: push failed after 3 attempts"
-            exit 1
+          if git diff --cached --quiet; then
+            echo "No new data to commit"
+            exit 0
           fi
+
+          git commit -m "Update Boatcast historical odds"
+
+          for attempt in 1 2 3; do
+            echo "Push attempt: $attempt"
+
+            git fetch origin "$GITHUB_REF_NAME"
+
+            if ! git rebase "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort || true
+              echo "ERROR: Rebase conflict"
+              exit 1
+            fi
+
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then
+              echo "SUCCESS: Odds data saved to GitHub"
+              exit 0
+            fi
+
+            sleep 5
+          done
+
+          echo "ERROR: Push failed after 3 attempts"
+          exit 1
