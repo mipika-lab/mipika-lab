@@ -12,7 +12,6 @@ on:
         description: "終了日 YYYY-MM-DD"
         required: true
         default: "2026-07-20"
-
   schedule:
     - cron: "0 18 * * *"
 
@@ -68,8 +67,24 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin "$GITHUB_REF_NAME"
+          git rebase "origin/$GITHUB_REF_NAME"
+
           git add data/boatcast_odds/
+
           if ! git diff --cached --quiet; then
             git commit -m "Update Boatcast historical odds"
-            git push
+
+            for attempt in 1 2 3; do
+              if git push; then
+                exit 0
+              fi
+
+              git fetch origin "$GITHUB_REF_NAME"
+              git rebase "origin/$GITHUB_REF_NAME"
+            done
+
+            echo "ERROR: push failed after 3 attempts"
+            exit 1
           fi
